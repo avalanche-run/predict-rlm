@@ -99,6 +99,30 @@ uv run ruff check src/ tests/
 
 Requires Python 3.11+ and Deno v2 (for integration tests / sandbox).
 
+## Using Claude Models (Max Subscription)
+
+All examples default to OpenAI models. To use Claude instead, set `ANTHROPIC_API_KEY` and swap the model strings:
+
+```python
+# Main LM: orchestration and code generation
+LLM_MODEL = "anthropic/claude-opus-4-7"
+
+# Sub-LM: perception and extraction (predict() calls)
+SUB_LM_MODEL = "anthropic/claude-sonnet-4-6"
+```
+
+DSPy passes these strings directly to LiteLLM, so the `anthropic/` prefix routes to the Anthropic API.
+
+Claude does not accept `reasoning_effort` — remove that kwarg from any `get_model_config()` calls that guard on model name. DSPy's extended thinking (budget tokens) can be enabled on Opus via `dspy.LM(..., thinking={"type": "enabled", "budget_tokens": 5000})` if needed, but is not required for basic usage.
+
+Run an example with Claude:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... uv run examples/document_analysis/run.py \
+  --model anthropic/claude-opus-4-7 \
+  --sub-lm-model anthropic/claude-sonnet-4-6
+```
+
 ## Architecture
 
 **predict-rlm** extends DSPy's RLM with a built-in `predict()` tool. It's a
