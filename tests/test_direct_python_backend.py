@@ -112,3 +112,41 @@ def test_predict_on_direct_backend_uses_the_rlm_adapter(tmp_path: Path) -> None:
 
     assert rlm(query="add").answer == "4"
     assert len(CountingDummyLM.calls) == 1
+
+
+def test_direct_backend_records_tool_calls_in_the_iteration_trace(tmp_path: Path) -> None:
+    def lookup(key: str) -> str:
+        return key.upper()
+
+    def explode() -> None:
+        raise ValueError("lookup exploded")
+
+    code = (
+        "found = await lookup('a')\n"
+        "try:\n"
+        "    await explode()\n"
+        "except Exception:\n"
+        "    pass\n"
+        "SUBMIT(answer=found)"
+    )
+    rlm = PredictRLM(
+        "query -> answer",
+        lm=DummyLM([{"plan": "look up", "code": code}], adapter=dspy.JSONAdapter()),
+        sub_lm=DummyLM([]),
+        max_iterations=1,
+        tools=[lookup, explode],
+        interpreter=DirectPythonBackend(
+            runner_path=str(tmp_path / "predict_rlm_runner.py"),
+            workdir=str(tmp_path),
+            exec_timeout=10,
+        ),
+    )
+
+    result = rlm(query="find a")
+
+    assert result.answer == "A"
+    calls = result.trace.steps[0].tool_calls
+    assert [(call.name, call.args, call.result, call.error) for call in calls] == [
+        ("lookup", ["a"], "A", None),
+        ("explode", [], None, "lookup exploded"),
+    ]
