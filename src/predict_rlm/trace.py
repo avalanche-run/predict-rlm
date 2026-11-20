@@ -552,6 +552,30 @@ def record_tool_call(call: ToolCall) -> None:
     calls.append(call)
 
 
+def record_host_tool_call(
+    name: str,
+    args: list[Any],
+    kwargs: dict[str, Any],
+    *,
+    started: float,
+    result: Any = None,
+    error: str | None = None,
+) -> None:
+    """Record a sandbox call to a host tool; predict() records itself with richer detail."""
+    if name == "predict":
+        return
+    record_tool_call(
+        ToolCall(
+            name=name,
+            args=args,
+            kwargs={k: v for k, v in kwargs.items() if k != "pydantic_schemas"},
+            result=result,
+            error=error,
+            duration_ms=ms_since(started),
+        )
+    )
+
+
 def drain_tool_calls() -> list[ToolCall]:
     """Return and clear all tool calls collected for this iteration."""
     try:

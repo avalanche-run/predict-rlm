@@ -14,6 +14,12 @@ from pathlib import Path
 
 import pytest
 
+from predict_rlm.trace import (
+    drain_tool_calls,
+    init_tool_call_collector,
+    reset_tool_call_collector,
+)
+
 from .backends import RuntimeHandle
 
 
@@ -271,3 +277,41 @@ def test_cancelling_execute_cancels_pending_async_host_tools(runtime: RuntimeHan
         return list(started), list(cancelled)
 
     assert asyncio.run(cancel_while_tool_waits()) == ([True], [True])
+
+
+def test_concurrent_host_tool_calls_are_recorded_in_the_callers_trace(
+    runtime: RuntimeHandle,
+) -> None:
+    barrier = threading.Barrier(2)
+
+    def double(value, pydantic_schemas=None):
+        barrier.wait(timeout=2)
+        return value * 2
+
+    runtime.configure(tools={**runtime.tools, "double": double})
+    token = init_tool_call_collector()
+    try:
+        runtime.execute(
+            "import asyncio\n"
+            "async def fail():\n"
+            "    try:\n"
+            "        await failing_tool()\n"
+            "    except Exception:\n"
+            "        pass\n"
+            "await asyncio.gather(\n"
+            "    double(3, pydantic_schemas={}), double(7), fail(),\n"
+            "    predict('question -> answer'),\n"
+            ")"
+        )
+        calls = drain_tool_calls()
+    finally:
+        reset_tool_call_collector(token)
+
+    recorded = sorted(
+        (call.name, call.args, call.kwargs, call.result, call.error) for call in calls
+    )
+    assert recorded == [
+        ("double", [3], {}, 6, None),
+        ("double", [7], {}, 14, None),
+        ("failing_tool", [], {}, None, "host tool failed"),
+    ]
