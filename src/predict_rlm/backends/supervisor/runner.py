@@ -39,6 +39,7 @@ from predict_rlm.execution_timeout import (
     validate_execution_timeout,
 )
 from predict_rlm.runtime import HostDirectoryMount
+from predict_rlm.trace import record_host_tool_call
 
 PYTHON_RUNNER_RECOVERABLE_TIMEOUT_GRACE_SECONDS = (
     DEFAULT_RECOVERABLE_EXECUTION_TIMEOUT_GRACE_SECONDS
@@ -998,6 +999,9 @@ class PythonSupervisor(SupervisorClient, LegacyExecutionBackend):
         request_id = request.get("id")
         params = request.get("params") or {}
         name = params.get("name")
+        call_start = time.perf_counter()
+        args: list[Any] = []
+        kwargs: dict[str, Any] = {}
         try:
             if name not in self.tools:
                 raise CodeInterpreterError(f"Unknown tool: {name}")
@@ -1006,6 +1010,7 @@ class PythonSupervisor(SupervisorClient, LegacyExecutionBackend):
             kwargs = dict(params.get("kwargs") or {})
             with self._execution_gate.tool_callback():
                 result = self._call_host_tool(tool, args, kwargs)
+            record_host_tool_call(name, args, kwargs, started=call_start, result=result)
             is_json = result is None or isinstance(result, (dict, list, int, float, bool))
             return {
                 "jsonrpc": "2.0",
@@ -1016,6 +1021,10 @@ class PythonSupervisor(SupervisorClient, LegacyExecutionBackend):
                 },
             }
         except BaseException as exc:
+            if isinstance(exc, Exception):
+                record_host_tool_call(
+                    name or "", args, kwargs, started=call_start, error=str(exc)
+                )
             error = _RunnerError.from_exception(exc)
             return {
                 "jsonrpc": "2.0",

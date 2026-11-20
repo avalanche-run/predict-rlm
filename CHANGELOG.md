@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `DirectPythonBackend` now records each non-`predict()` host tool call in the
+  run trace, as JSPI and SBX do, so `IterationStep.tool_calls` is no longer empty
+  on Direct. Concurrent calls land in the iteration's collector.
+
 ## [0.13.2] - 2026-10-30
 
 ### Fixed

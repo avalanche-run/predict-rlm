@@ -61,7 +61,7 @@ from predict_rlm.runtime import (
 )
 from predict_rlm.runtime_hooks import RuntimeHook, RuntimeHookEvent
 from predict_rlm.serialization import to_plain_data
-from predict_rlm.trace import ToolCall, ms_since, record_tool_call
+from predict_rlm.trace import ms_since, record_host_tool_call
 
 from ..base import (
     BackendExecutionGate,
@@ -2510,16 +2510,7 @@ class SbxBackend(SupervisorClient, LegacyExecutionBackend):
                 },
                 "id": request_id,
             }
-            if name != "predict":
-                record_tool_call(
-                    ToolCall(
-                        name=name,
-                        args=args,
-                        kwargs={k: v for k, v in kwargs.items() if k != "pydantic_schemas"},
-                        result=result,
-                        duration_ms=ms_since(call_start),
-                    )
-                )
+            record_host_tool_call(name, args, kwargs, started=call_start, result=result)
             self._log_lifecycle(
                 "sbx.tool_call.ok",
                 tool=name,
@@ -2528,17 +2519,7 @@ class SbxBackend(SupervisorClient, LegacyExecutionBackend):
             )
             return response
         except Exception as exc:
-            if name != "predict":
-                record_tool_call(
-                    ToolCall(
-                        name=name or "",
-                        args=args,
-                        kwargs={k: v for k, v in kwargs.items() if k != "pydantic_schemas"},
-                        result=None,
-                        error=str(exc),
-                        duration_ms=ms_since(call_start),
-                    )
-                )
+            record_host_tool_call(name or "", args, kwargs, started=call_start, error=str(exc))
             self._log_lifecycle(
                 "sbx.tool_call.error",
                 tool=name,
@@ -2596,16 +2577,7 @@ class SbxBackend(SupervisorClient, LegacyExecutionBackend):
                 },
                 "id": request_id,
             }
-            if name != "predict":
-                record_tool_call(
-                    ToolCall(
-                        name=name,
-                        args=args,
-                        kwargs={k: v for k, v in kwargs.items() if k != "pydantic_schemas"},
-                        result=result,
-                        duration_ms=ms_since(call_start),
-                    )
-                )
+            record_host_tool_call(name, args, kwargs, started=call_start, result=result)
             self._log_lifecycle(
                 "sbx.tool_call.ok",
                 tool=name,
@@ -2623,17 +2595,7 @@ class SbxBackend(SupervisorClient, LegacyExecutionBackend):
                 temp_dir = None
             raise
         except Exception as exc:
-            if name != "predict":
-                record_tool_call(
-                    ToolCall(
-                        name=name or "",
-                        args=args,
-                        kwargs={k: v for k, v in kwargs.items() if k != "pydantic_schemas"},
-                        result=None,
-                        error=str(exc),
-                        duration_ms=ms_since(call_start),
-                    )
-                )
+            record_host_tool_call(name or "", args, kwargs, started=call_start, error=str(exc))
             self._log_lifecycle(
                 "sbx.tool_call.error",
                 tool=name,

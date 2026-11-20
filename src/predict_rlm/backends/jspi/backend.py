@@ -2302,7 +2302,7 @@ class JspiBackend(SyncWorkerTracker, PythonInterpreter):
         tool_request_id: int | str | None = None,
     ) -> dict:
         """Execute a tool asynchronously and return the response dict."""
-        from predict_rlm.trace import ToolCall, ms_since, record_tool_call
+        from predict_rlm.trace import ms_since, record_host_tool_call
 
         if not hasattr(self, "_execution_gate"):
             self._execution_gate = BackendExecutionGate("JSPI backend")
@@ -2486,16 +2486,7 @@ class JspiBackend(SyncWorkerTracker, PythonInterpreter):
             }
 
             # Record non-predict tool calls (predict records itself with richer detail)
-            if tool_name != "predict":
-                record_tool_call(
-                    ToolCall(
-                        name=tool_name,
-                        args=args,
-                        kwargs={k: v for k, v in kwargs.items() if k != "pydantic_schemas"},
-                        result=result,
-                        duration_ms=ms_since(call_start),
-                    )
-                )
+            record_host_tool_call(tool_name, args, kwargs, started=call_start, result=result)
 
             self._write_telemetry_span(
                 "sandbox.tool_call.ok",
@@ -2537,17 +2528,7 @@ class JspiBackend(SyncWorkerTracker, PythonInterpreter):
                     )
                 else:
                     shutil.rmtree(temp_dir, ignore_errors=True)
-            if tool_name != "predict":
-                record_tool_call(
-                    ToolCall(
-                        name=tool_name,
-                        args=args,
-                        kwargs={k: v for k, v in kwargs.items() if k != "pydantic_schemas"},
-                        result=None,
-                        error=str(e),
-                        duration_ms=ms_since(call_start),
-                    )
-                )
+            record_host_tool_call(tool_name, args, kwargs, started=call_start, error=str(e))
             if isinstance(e, TimeoutError):
                 self._write_telemetry_span(
                     "sandbox.tool_call.timeout",
