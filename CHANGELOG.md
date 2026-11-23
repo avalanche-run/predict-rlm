@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.3] - 2026-11-23
+
 ### Fixed
 
 - `DirectPythonBackend` now records each non-`predict()` host tool call in the
@@ -226,7 +228,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the move to native asynchronous SBX execution and prevents synchronous
   shutdown from blocking its own event loop.
 
-[Unreleased]: https://github.com/Trampoline-AI/predict-rlm/compare/v0.13.2...HEAD
+[Unreleased]: https://github.com/Trampoline-AI/predict-rlm/compare/v0.13.3...HEAD
+[0.13.3]: https://github.com/Trampoline-AI/predict-rlm/compare/v0.13.2...v0.13.3
 [0.13.2]: https://github.com/Trampoline-AI/predict-rlm/compare/v0.13.1...v0.13.2
 [0.13.1]: https://github.com/Trampoline-AI/predict-rlm/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/Trampoline-AI/predict-rlm/compare/v0.12.0...v0.13.0
